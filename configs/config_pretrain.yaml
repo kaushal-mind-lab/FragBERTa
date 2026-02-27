@@ -1,0 +1,55 @@
+# -----------------------------
+# Experiment / Paths
+# -----------------------------
+RESUME_FROM_CHECKPOINT: "false" # Options: "auto", "False", or "/path/to/specific/checkpoint-XXXX"
+RUN_NAME: &run_name "r1" #---CHANGE
+DATA_CSV: ../../data/pretrain/pubchem-chembl-zinc-ft__safe___mw-lt-1000__11p08m.parquet          
+TOKENIZER_DIR: ../../data/tokenizer/roberta_fast_tokenizer_BPE   
+OUTPUT_DIR: ../../output/pretrain/r1/output #----CHANGE
+OUTPUT_DIR_BEST: ../../output/pretrain/r1/output/best-checkpoint #----CHANGE
+
+WANDB_PROJECT: "FragBERTa"
+WANDB_ENTITY: "your_entity"           
+WANDB_RUN_NAME: *run_name
+WANDB_MODE: "online"
+REPORT_TO: ["wandb"]
+WANDB_RUN_ID: "wrid_101" #--set a fixed ID
+# -----------------------------
+# Training Hyperparameters
+# -----------------------------
+HIDDEN_SIZE: 1020
+TRAIN_BATCH_SIZE: 256
+VALID_BATCH_SIZE: 256
+TRAIN_EPOCHS: 2000
+LEARNING_RATE: 0.0002
+WEIGHT_DECAY: 0.01
+MAX_LEN: 200
+MAX_POSITION_EMBEDDINGS: 202
+NUM_ATTENTION_HEADS: 12
+NUM_HIDDEN_LAYERS: 8
+TYPE_VOCAB_SIZE: 1
+# -----------------------------
+# Data / Split / Masking
+# -----------------------------
+NUM_DATAPOINTS: 0
+TRAIN_COL: "safe"
+VAL_FRACTION: 0.05
+SEED: 42
+MLM_PROBABILITY: 0.15
+DATALOADER_NUM_WORKERS: 4
+# -----------------------------
+# Trainer / Runtime
+# -----------------------------
+GRADIENT_ACCUMULATION_STEPS: 4
+EVAL_ACCUMULATION_STEPS: 2
+WARMUP_STEPS: 1000
+FP16: true # set to false if not on NVIDIA/appropriate hardware
+BF16: false # set to true on Ampere+ with bf16 support (and set FP16=false)
+LOGGING_STEPS: 25
+SAVE_STRATEGY: "steps"
+EVAL_STRATEGY: "steps"
+EVAL_STEPS: 500
+SAVE_TOTAL_LIMIT: 3
+LOAD_BEST_MODEL_AT_END: true
+EARLY_STOPPING_PATIENCE: 5  # Number of evaluations with no improvement
+EARLY_STOPPING_THRESHOLD: 0.00001  # Minimum change to qualify as improvement

@@ -1,0 +1,13 @@
+{
+  "do_lower_case": false,
+  "bos_token": "<s>",
+  "cls_token": "<s>",
+  "eos_token": "</s>",
+  "mask_token": "<mask>",
+  "pad_token": "<pad>",
+  "sep_token": "</s>",
+  "unk_token": "<unk>",
+  "tokenizer_class": "RobertaTokenizerFast",
+  "model_max_length": 512,
+  "add_prefix_space": false
+}
