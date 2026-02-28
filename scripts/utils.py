@@ -1,8 +1,8 @@
-import math
 import os
-
-import safe
+import math
 import yaml
+from rdkit import Chem
+import safe
 from transformers import (
     RobertaTokenizerFast,
 )
@@ -25,62 +25,62 @@ def time_elapsed(t1, t2):
 
     return "time elapsed: " + ", ".join(parts)
 
-
-# -----------------------------
-# Get total training steps
-# -----------------------------
 def get_total_steps(num_gpus, N, B, A, E):
+    """Get total training steps on multi-GPU training"""
     steps_per_epoch = math.ceil(N / (B * num_gpus * A))
     total_steps = steps_per_epoch * E
     return total_steps
 
-
-# -----------------------------
-# Load config file from disk
-# -----------------------------
 def load_config(path: str) -> dict:
+    """
+    Load config file from disk
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(f"Config YAML not found at: {path}")
     with open(path, "r") as f:
         cfg = yaml.safe_load(f)
     return cfg
 
+# def convert_smiles_to_safe(smiles_str):
+#     return safe.encode(smiles_str, canonical=True, ignore_stereo=True)
 
-# -----------------------------
-# Convert SMILES to SAFE repr
-# -----------------------------
-def smiles_to_safe(smiles_str):
-    return safe.encode(smiles_str, canonical=True, ignore_stereo=True)
-
-
-# -----------------------------------------
-# Convert SMILES to SAFE repr (more robust)
-# -----------------------------------------
-def safe_encode(smiles: str, slicer: str):
+def convert_smiles_to_safe(smiles: str, slicer: str="brics"):
+    """
+    Convert SMILES to SAFE repr
+    """
     try:
         return safe.encode(smiles, slicer=slicer, canonical=True, ignore_stereo=True)
     except Exception:
         return None
 
+def canonicalize_smiles(smiles: str):
+    """
+    Canonicalize a SMILES using rdkit
+    """
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        print('Cannot canonicalize SMILES:', smiles)
+        return None
+    return Chem.MolToSmiles(mol, canonical=True)
 
-# -----------------------------
-# Tokenization / preprocessing
-# -----------------------------
 def build_tokenizer(tokenizer_dir: str) -> RobertaTokenizerFast:
+    """
+    convert tokenizer to roberta fast tokenizer
+    """
     tok = RobertaTokenizerFast.from_pretrained(tokenizer_dir, use_fast=True)
-    # Ensure padding side and special tokens are sane for MLM
-    if tok.pad_token is None:
+    if tok.pad_token is None: # Ensure padding side and special tokens are sane for MLM
         tok.add_special_tokens({"pad_token": "<pad>"})
     tok.padding_side = "right"
     return tok
 
-
-# -----------------------------
-# Tokenize
-# -----------------------------
-def tokenize_function(
-    examples, tokenizer: RobertaTokenizerFast, max_len: int, col_name
+def tokenize_function(examples,
+                      tokenizer: RobertaTokenizerFast,
+                      max_len: int,
+                      col_name
 ):
+    """
+    Tokenize corpus
+    """
     return tokenizer(
         examples[col_name],
         truncation=True,
@@ -90,9 +90,6 @@ def tokenize_function(
     )
 
 
-# ---------------------------------
-# Save config with appended params
-# ---------------------------------
 def save_updated_config(
     original_cfg: dict,
     output_dir: str,
@@ -102,6 +99,9 @@ def save_updated_config(
     trainable_params: int,
     train_steps: int,
 ):
+    """
+    Save config with appended params
+    """
     new_cfg = dict(original_cfg)
 
     # Add new keys
@@ -118,3 +118,32 @@ def save_updated_config(
         yaml.safe_dump(new_cfg, f, sort_keys=False)
 
     print(f"[Config] Saved updated config to {save_path}")
+
+
+def brics_or_random_slicer(smiles, other_slicers, rng):
+    """
+    Returns list of SAFE strings:
+      - includes BRICS SAFE if available
+      - includes one randomly chosen SAFE from other slicers if BRICS is not available
+      - returns [] if all fail
+    Each SAFE is prefixed with slicer tag.
+    """
+    out = []
+
+    brics = convert_smiles_to_safe(smiles, "brics")
+    if brics is not None:
+        out.append(f"BRICS.{brics}")
+        return out
+    else:
+        # Try other slicers; collect successes
+        candidates = []
+        for s in other_slicers:
+            x = convert_smiles_to_safe(smiles, s)
+            if x is not None:
+                candidates.append((s, x))
+
+        if len(candidates) > 0:
+            s, x = candidates[rng.randrange(len(candidates))]
+            out.append(f"{s.upper()}.{x}")
+        
+        return out

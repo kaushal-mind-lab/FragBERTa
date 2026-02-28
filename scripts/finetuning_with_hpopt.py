@@ -1,13 +1,13 @@
 """
 1. Hyperparameter optimization for FragBERT finetuning via Optuna
 2. Training model from scratch on train set using the best-fit params
-3. Run as: python hpopt.py --target tox21 --task_type mlclass --use_scaffold 0 --pretrained_model_path path/to/pretrained/model --optuna_num_trials 150
+3. Run as: python finetuning_with_hpopt.py --target tox21 --task_type mlclass --use_scaffold 0 --pretrained_model_path path/to/pretrained/model --optuna_num_trials 150
 """
-
+#TODO: Remove emojis from prints statements
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"#,1,2,3,4,5,6,7"
 os.environ["WANDB_MODE"] = "disabled"
 import argparse
 import json
@@ -219,6 +219,8 @@ def prepare_data(config, use_cache=True):
         main_df["target"] = pd.to_numeric(main_df["target"], errors="raise")
 
     print(f"Original dataset size: {len(main_df)}")
+    main_df = main_df.drop_duplicates(subset=["smiles"]).reset_index(drop=True)
+    print(f"After deduplication: {len(main_df)}")
 
     # Validate SMILES before scaffold split to avoid segfault
     if config["use_scaffold"] == 1:
@@ -237,6 +239,7 @@ def prepare_data(config, use_cache=True):
             main_df = main_df[valid_mask].reset_index(drop=True)
             print(f"Dataset size after cleaning: {len(main_df)}")
     # =========================================
+    print(f"Original dataset size (after SMILES validation): {len(main_df)}")
 
     # Split data
     if config["use_scaffold"] == 0:
@@ -268,10 +271,12 @@ def prepare_data(config, use_cache=True):
         train2match = pd.DataFrame({"smiles": np.array(train.smiles()).flatten()})
         val2match = pd.DataFrame({"smiles": np.array(val.smiles()).flatten()})
         test2match = pd.DataFrame({"smiles": np.array(test.smiles()).flatten()})
+        #print(len(main_df),len(train2match), len(val2match), len(test2match))
 
         merged_df_train = pd.merge(main_df, train2match, on="smiles", how="inner")
         merged_df_val = pd.merge(main_df, val2match, on="smiles", how="inner")
         merged_df_test = pd.merge(main_df, test2match, on="smiles", how="inner")
+        #print(len(main_df),len(merged_df_train), len(merged_df_val), len(merged_df_test))
 
         if config["target"] not in ["sider", "tox21"]:
             colnames = ["safe", "target"]
@@ -569,16 +574,12 @@ def train_final_model(best_params, config, train_df, val_df, test_df, tokenizer)
         scaler = MinMaxScaler()
         train_scaled["target"] = scaler.fit_transform(train_scaled[["target"]])
         scaler_params = {"type": "minmax", "min": float(scaler.data_min_[0]), "max": float(scaler.data_max_[0])}
-        with open(Path(config["output_dir"]) / "scaler.json", "w") as f:
-            json.dump(scaler_params, f)
         val_scaled["target"] = scaler.transform(val_scaled[["target"]])
         test_scaled["target"] = scaler.transform(test_scaled[["target"]])
     elif best_params["scaler"] == 2:
         scaler = StandardScaler()
         train_scaled["target"] = scaler.fit_transform(train_scaled[["target"]])
         scaler_params = {"type": "standard", "mean": float(scaler.mean_[0]), "std": float(scaler.scale_[0])}
-        with open(Path(config["output_dir"]) / "scaler.json", "w") as f:
-            json.dump(scaler_params, f)
         val_scaled["target"] = scaler.transform(val_scaled[["target"]])
         test_scaled["target"] = scaler.transform(test_scaled[["target"]])
 
@@ -680,8 +681,10 @@ def train_final_model(best_params, config, train_df, val_df, test_df, tokenizer)
     # Save best model
     best_model_dir = Path(config["output_dir"]) / "best_model"
     trainer.save_model(str(best_model_dir))
+    if scaler is not None:
+        with open(f"{best_model_dir}/scaler.json", "w") as f:
+                json.dump(scaler_params, f)
     print(f"\n✓ Best model saved to {best_model_dir}")
-
     # Save results
     results = {
         "best_hyperparameters": best_params,
@@ -726,6 +729,14 @@ def main():
     )
 
     parser.add_argument(
+        "--root_dir",
+        type=str,
+        default="/data/kaushal/FragBERTa",
+        required=True,
+        help="Root path",
+    )
+
+    parser.add_argument(
         "--pretrained_model_path",
         type=str,
         default=None,
@@ -766,26 +777,30 @@ def main():
     # CONFIGURATION - YOU AS USER SHOULD MODIFY THIS AS NEEDED
     # ==========================================================
     CONFIG = {
+        
         # Paths
         "target": target,
         "dataset_type": dataset_type,
         "task_type": task_type,  # ---scaler=None for classification
         "num_labels": num_labels,  # 1 for reg and slclass, and 3 for mlclass
         "pretrained_model": args.pretrained_model_path,  # ---path to pretrained model
-        "tokenizer": "../../data/tokenizer/roberta_fast_tokenizer_BPE",
-        "dataset": f"../../data/finetune/cleaned/{dataset_type}/{target}_cleaned.csv",
-        "output_dir": f"../../output/finetune/{split_type}/{target.upper()}/hpopt_results",
+        "tokenizer": f"{args.root_dir}/data/tokenizer/roberta_fast_tokenizer_BPE",
+        "dataset": f"{args.root_dir}/data/finetune/cleaned/{target}_cleaned.csv",
+        "output_dir": f"{args.root_dir}/models/finetuned/{target}_on_{split_type}/hpopt_results",
+        
         # Dataset parameters
         "use_scaffold": use_scaffold,  # 0=random, 1=scaffold
         "max_len": 200,
+        
         # Optuna parameters
         "n_trials": args.optuna_num_trials,  # Number of hyperparameter combinations to try
         "n_jobs": 1,  # Parallel trials (set to 1 for single GPU)
         "timeout": None,  # Optional: timeout in seconds
+        
         # Fixed hyperparameters (not optimized)
         "validation_batch_size": 16,
         "num_epochs_hpo": 40,  # Epochs per trial (shorter for HPO)
-        "num_epochs_final": 125,  # Epochs for final training with best params
+        "num_epochs_final": 150,  # Epochs for final training with best params
     }
 
     print(f"\n{'='*60}")

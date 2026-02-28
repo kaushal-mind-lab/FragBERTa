@@ -24,7 +24,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import safe_encode
+from utils import convert_smiles_to_safe
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["WANDB_MODE"] = "disabled"
@@ -45,12 +45,12 @@ def smiles_to_safe_parts(smiles: str):
     """
     Returns (slicer_name, safe_string_without_prefix) or (None, None) if all fail.
     """
-    result = safe_encode(smiles, "brics")
+    result = convert_smiles_to_safe(smiles, "brics")
     if result is not None:
         return "BRICS", result
 
     for slicer in OTHER_SLICERS:
-        result = safe_encode(smiles, slicer)
+        result = convert_smiles_to_safe(smiles, slicer)
         if result is not None:
             return slicer.upper(), result
     return None, None
@@ -66,8 +66,10 @@ def convert_smiles_column(df: pd.DataFrame) -> pd.DataFrame:
     failed_canon = 0
     failed_safe = 0
 
+    print("Raw samples:", len(df))
     print(f"Converting {len(df)} SMILES to SAFE format...")
 
+    seen = set()
     for idx, row in df.iterrows():
         input_smi = str(row["smiles"]).strip()
 
@@ -81,6 +83,10 @@ def convert_smiles_column(df: pd.DataFrame) -> pd.DataFrame:
             print(f"Cannot canonicalize SMILES (row {idx}): {input_smi}")
             failed_canon += 1
             continue
+
+        if canonical_smi in seen:
+            continue
+        seen.add(canonical_smi)
 
         # Convert to SAFE
         slicer_name, safe_str = smiles_to_safe_parts(canonical_smi)
@@ -106,6 +112,7 @@ def convert_smiles_column(df: pd.DataFrame) -> pd.DataFrame:
         print(f"  Failed canonicalization: {failed_canon}, failed SAFE: {failed_safe}")
         print("  These rows will be excluded from predictions.")
 
+    print("Processed samples:", len(seen))
     return pd.DataFrame(records).reset_index(drop=True)
 
 
@@ -246,11 +253,11 @@ def main():
     results = trainer.predict(dataset)
     raw_preds = results.predictions  # shape: (N, num_labels) or (N, 1)
 
-    scaler_path = args.model_path
+    scaler_path = args.model_path+'/scaler.json'
     # Post-process predictions
     if args.task_type == "reg":
         preds = raw_preds.squeeze()
-        if scaler_path:
+        if os.path.exists(scaler_path):
             print(f"Applying inverse scaling from {scaler_path}...")
             with open(scaler_path) as f:
                 scaler_params = json.load(f)
