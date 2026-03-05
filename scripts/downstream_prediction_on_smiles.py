@@ -1,5 +1,5 @@
 """
-1. Generate predictions from a trained FragBERT model.
+1. Generate predictions from a finetuned model.
 2. Accepts a CSV of SMILES, converts them to SAFE format, then runs inference.
 3. Run as: python downstream_prediction_on_smiles.py --target tox21 --model_path path/to/best_model --test_data path/to/test.csv --task_type reg --output_path predictions.csv
 4. Input CSV must have a 'smiles' column. Any other columns are passed through to the output.
@@ -67,7 +67,7 @@ def convert_smiles_column(df: pd.DataFrame) -> pd.DataFrame:
     failed_safe = 0
 
     print("Raw samples:", len(df))
-    print(f"Converting {len(df)} SMILES to SAFE format...")
+    print(f"Converting {len(df)} SMILES to compatible SAFE format...")
 
     seen = set()
     for idx, row in df.iterrows():
@@ -177,7 +177,7 @@ def main():
         help="Task type the model was trained on",
     )
     parser.add_argument(
-        "--tokenizer",
+        "--tokenizer_path",
         type=str,
         default="../data/tokenizer/roberta_fast_tokenizer_BPE",
         help="Path to tokenizer",
@@ -203,7 +203,7 @@ def main():
     raw_df = pd.read_csv(args.test_data)
     if "smiles" not in raw_df.columns:
         raise ValueError("Input CSV must contain a 'smiles' column.")
-    print(f"  {len(raw_df)} rows loaded")
+    print(f"{len(raw_df)} rows loaded")
 
     # Convert SMILES → SAFE (drops rows that fail)
     test_df = convert_smiles_column(raw_df)
@@ -216,9 +216,9 @@ def main():
     print(f"  {len(texts)} molecules ready for inference")
 
     # Load tokenizer
-    print(f"Loading tokenizer from {args.tokenizer}...")
+    print(f"Loading tokenizer from {args.tokenizer_path}...")
     tokenizer = RobertaTokenizerFast.from_pretrained(
-        args.tokenizer, do_lower_case=False
+        args.tokenizer_path, do_lower_case=False
     )
 
     # Build dataset

@@ -66,7 +66,7 @@ def main():
     # -----------------------------
     # Param reads
     # -----------------------------
-    ORIG_CONFIG_PATH = "./config.yaml"
+    ORIG_CONFIG_PATH = "../configs/config_pretrain.yaml"
     cfg = load_config(ORIG_CONFIG_PATH)
     run_name = cfg["RUN_NAME"]
     data_csv = cfg["DATA_CSV"]

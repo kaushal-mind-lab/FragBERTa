@@ -5,7 +5,6 @@ VENV_PATH="$FRAGBERTA_PATH/.venv/bin/activate"
 SCRIPT_DIR="$FRAGBERTA_PATH/scripts"
 LOG_PATH=$FRAGBERTA_PATH/logs
 mkdir -p $LOG_PATH
-rm -rf $LOG_PATH/*
 
 NUM_TRIALS=200
 reg_targets=("esol" "freesolv" "lipo" "pdbbind")
@@ -48,5 +47,5 @@ run_jobs () {
 }
 
 run_jobs "reg" "${reg_targets[@]}"
-#run_jobs "slclass" "${slclass_targets[@]}"
-#run_jobs "mlclass" "${mlclass_targets[@]}"
+run_jobs "slclass" "${slclass_targets[@]}"
+run_jobs "mlclass" "${mlclass_targets[@]}"
