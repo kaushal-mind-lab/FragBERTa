@@ -1,11 +1,9 @@
 # FragBERTa
 
-Fragment-aware transformer model using Sequential Attachement-based Fragment Encoding (SAFE) sequences for molecular representation learning and property prediction.
+Fragment-aware transformer model using Sequential Attachement-based Fragment Encoding (SAFE) sequences for molecular representation learning and property prediction. Read the preprint here: https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000476/v1
 
-FragBERTa supports:
-- Masked language model (MLM) pretraining
-- Downstream finetuning with hyperparameter optimization
-- SAFE-based prediction workflow
+![FragBERTa architecture](images/pipeline.png)
+
 
 ### Repository Structure
 
