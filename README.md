@@ -1,4 +1,4 @@
-# FragBERTa
+# FragBERTa: A Fragment-based Molecular Representation Learning Model with Sequential Attachment-based Fragment Embeddings
 
 Fragment-aware transformer model using Sequential Attachement-based Fragment Encoding (SAFE) sequences for molecular representation learning and property prediction. Read the preprint here: https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000476/v1
 
