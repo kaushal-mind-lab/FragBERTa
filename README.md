@@ -2,7 +2,7 @@
 
 Fragment-aware transformer model using Sequential Attachement-based Fragment Encoding (SAFE) sequences for molecular representation learning and property prediction. Read the preprint here: https://chemrxiv.org/doi/full/10.26434/chemrxiv.15000476/v1
 
-Use FragBERTa in our interactive website for inference: kaushallab.mtu.edu/fragberta
+Use FragBERTa in our interactive website for inference: https://kaushallab.mtu.edu/fragberta
 
 ![FragBERTa architecture](images/pipeline.png)
 
