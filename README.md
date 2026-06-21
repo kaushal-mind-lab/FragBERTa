@@ -4,6 +4,8 @@ Fragment-aware transformer model using Sequential Attachement-based Fragment Enc
 
 Use FragBERTa in our interactive website for inference: https://kaushallab.mtu.edu/fragberta (draft version, still in development)
 
+Download trained model checkpoints and raw and cleaned data from https://zenodo.org/records/18803348
+
 ![FragBERTa architecture](images/pipeline.png)
 
 
