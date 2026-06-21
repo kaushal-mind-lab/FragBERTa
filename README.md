@@ -108,3 +108,5 @@ python scripts/downstream_prediction_on_smiles.py \
         --output_path tempfile.csv
 ```
 The output CSV will contain columns named `slicer, input_smiles, canonical_smiles, safe, target, prediction`.
+
+Thanks to NVIDIA Academic Award for providing cloud compute for this work.
